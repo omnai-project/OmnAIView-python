@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Simple Tk-/matplotlib-Frontend for the OmnAIView-DevDataServer.
+Simple Tk-/matplotlib front-end that can talk to **multiple back-ends**
+(DevDataServer, OmnAIScope DataServer, …) via a *Strategy Pattern*.
 Start:  python main.py
 """
 
@@ -8,30 +9,22 @@ import asyncio
 import json
 import queue
 import threading
-import time
-from dataclasses import dataclass
 from functools import partial
 from typing import Dict, List, Tuple
-
-import requests
-import tkinter as tk
-from tkinter import messagebox, simpledialog, ttk
 
 import matplotlib
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
+import tkinter as tk
+from tkinter import messagebox, ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from websockets import connect
 
-
-# ------------------------------------------------------------
-# Datatypes 
-# ------------------------------------------------------------
-@dataclass
-class Device:
-    uuid: str
-    color: str   # hex-RGB »#rrggbb«
-
+from datasources import (
+    Device,
+    available_sources,
+    get_strategy,
+)
 
 # ------------------------------------------------------------
 # GUI-Class
@@ -62,6 +55,11 @@ class DevDataClient(tk.Tk):
         self.stop_event = threading.Event()
         self.queue: "queue.Queue[Tuple[float, List[float]]]" = queue.Queue()
 
+        # ­­­– Strategy (set after connect) –­­­
+        self.strategy = None
+        self.host_port = ""
+        self.active_uuids: List[str] = []
+
         # Animation of the data
         self.ani = animation.FuncAnimation(
             self.fig,
@@ -72,41 +70,48 @@ class DevDataClient(tk.Tk):
         )
 
     # --------------------------------------------------------
-    # Step 1 – Set IP/Port
+    # Step 1 – IP/Port *and* data-source selection
     # --------------------------------------------------------
     def _connect_dialog(self):
-        target = simpledialog.askstring(
-            "Connect", "WebSocket-Server (ip:port):", initialvalue="localhost:8080", parent=self)
-        if not target:
-            return
+        dlg = tk.Toplevel(self)
+        dlg.title("Connect")
+
+        ttk.Label(dlg, text="WebSocket-Server (ip:port):") \
+            .grid(row=0, column=0, padx=6, pady=4, sticky="e")
+        host_var = tk.StringVar(value="localhost:8080")
+        ttk.Entry(dlg, textvariable=host_var, width=20) \
+            .grid(row=0, column=1, pady=4)
+
+        ttk.Label(dlg, text="Data source:") \
+            .grid(row=1, column=0, padx=6, pady=4, sticky="e")
+        src_var = tk.StringVar(value=available_sources()[0])
+        ttk.Combobox(
+            dlg, textvariable=src_var,
+            values=available_sources(),
+            state="readonly", width=18
+        ).grid(row=1, column=1, pady=4)
+
+        ttk.Button(
+            dlg, text="Connect",
+            command=lambda: self._on_connect_submit(
+                dlg, host_var.get().strip(), src_var.get())
+        ).grid(row=2, column=0, columnspan=2, pady=8)
+
+    def _on_connect_submit(self, dlg, host_port, source_name):
+        dlg.destroy()
+        self.strategy = get_strategy(source_name)   # ← concrete Strategy
+        self.host_port = host_port
         try:
-            devs = self._fetch_device_list(target)
+            devices = self.strategy.fetch_devices(host_port)
         except Exception as e:
-            messagebox.showerror("Error", f"Devicelist cant be loaded:\n{e}")
+            messagebox.showerror("Error", f"Device list cannot be loaded:\n{e}")
             return
-        self._device_dialog(target, devs)
+        self._device_dialog(devices)
 
     # --------------------------------------------------------
-    # Step 2 – fetch devices (HTTP GET /UUID)
-    # This needs to implement the interface that was set for the specific server 
+    # Step 2 – choose devices + options
     # --------------------------------------------------------
-    def _fetch_device_list(self, target: str) -> List[Device]:
-        url = f"http://{target}/UUID"
-        resp = requests.get(url, timeout=5)
-        resp.raise_for_status()
-        devices: List[Device] = []
-        for ds in resp.json()["datastreams"]:
-            rgb = ds["color"]
-            devices.append(Device(
-                uuid=ds["UUID"],
-                color=f"#{rgb['r']:02x}{rgb['g']:02x}{rgb['b']:02x}"
-            ))
-        return devices
-
-    # --------------------------------------------------------
-    # Step 3 – Choose devices + options
-    # --------------------------------------------------------
-    def _device_dialog(self, target: str, devices: List[Device]):
+    def _device_dialog(self, devices: List[Device]):
         dlg = tk.Toplevel(self)
         dlg.title("Choose devices")
         ttk.Label(dlg, text="Devices:").pack(anchor="w", padx=8, pady=4)
@@ -114,36 +119,45 @@ class DevDataClient(tk.Tk):
         vars_: Dict[str, tk.BooleanVar] = {}
         for dev in devices:
             v = tk.BooleanVar(value=False)
-            chk = ttk.Checkbutton(dlg, text=dev.uuid, variable=v)
-            chk.pack(anchor="w", padx=20)
+            ttk.Checkbutton(dlg, text=dev.uuid, variable=v) \
+                .pack(anchor="w", padx=20)
             vars_[dev.uuid] = v
 
         frm = ttk.Frame(dlg)
         frm.pack(fill="x", pady=6)
-        ttk.Label(frm, text="Samplerate (Hz):").grid(row=0, column=0, sticky="e")
+        ttk.Label(frm, text="Samplerate (Hz):") \
+            .grid(row=0, column=0, sticky="e")
         rate_var = tk.IntVar(value=60)
-        ttk.Entry(frm, textvariable=rate_var, width=8).grid(row=0, column=1, sticky="w", padx=4)
+        ttk.Entry(frm, textvariable=rate_var, width=8) \
+            .grid(row=0, column=1, sticky="w", padx=4)
 
-        ttk.Label(frm, text="Format:").grid(row=1, column=0, sticky="e")
-        fmt_var = tk.StringVar(value="json")
-        ttk.Combobox(frm, textvariable=fmt_var, state="readonly",
-                     values=("json", "csv"), width=7).grid(row=1, column=1, sticky="w", padx=4)
+        ttk.Label(frm, text="Format:") \
+            .grid(row=1, column=0, sticky="e")
+        fmt_var = tk.StringVar(value=self.strategy.formats[0])
+        ttk.Combobox(frm, textvariable=fmt_var,
+                     values=self.strategy.formats,
+                     state="readonly", width=7) \
+            .grid(row=1, column=1, sticky="w", padx=4)
 
         ttk.Button(dlg, text="Start measurement",
-                   command=partial(self._start_measurement, dlg, target, vars_, devices, rate_var, fmt_var)
+                   command=partial(
+                       self._start_measurement,
+                       dlg, vars_, devices, rate_var, fmt_var)
                    ).pack(pady=8)
 
     # --------------------------------------------------------
-    # Step 4 – WebSocket - start thread 
+    # Step 3 – WebSocket thread start
     # --------------------------------------------------------
-    def _start_measurement(self, dlg, target, vars_, devices, rate_var, fmt_var):
+    def _start_measurement(self, dlg, vars_, devices, rate_var, fmt_var):
         uuids = [uid for uid, v in vars_.items() if v.get()]
         if not uuids:
-            messagebox.showwarning("Warning:", "Please choose at least one device.")
+            messagebox.showwarning("Warning", "Please choose at least one device.")
             return
         dlg.destroy()
 
-        # plot reset settings 
+        self.active_uuids = uuids
+
+        # reset plot
         self.ax.clear()
         self.ax.set_xlabel("Time (s)")
         self.ax.set_ylabel("Value")
@@ -161,33 +175,41 @@ class DevDataClient(tk.Tk):
         self.stop_event.clear()
         self.ws_thread = threading.Thread(
             target=self._ws_worker,
-            args=(target, uuids, rate_var.get(), fmt_var.get()),
+            args=(
+                self.strategy.build_ws_uri(self.host_port),
+                self.strategy.build_subscribe_cmd(
+                    uuids, rate_var.get(), fmt_var.get()
+                ),
+            ),
             daemon=True)
         self.ws_thread.start()
 
     # --------------------------------------------------------
-    # Background Thread – WebSocket-Client (asyncio)
-    # connects to websocket 
-    # sends the uuid + options to the websocket 
-    # receives the message from the websocket 
+    # Background Thread – WebSocket client (asyncio)
+    # connects to websocket and receives the data 
     # --------------------------------------------------------
-    def _ws_worker(self, target: str, uuids: List[str], rate: int, fmt: str):
+    def _ws_worker(self, uri: str, subscribe_cmd: str | bytes):
         async def _runner():
-            uri = f"ws://{target}/ws"
             async with connect(uri) as ws:
-                cmd = " ".join(uuids + [str(rate), fmt])
-                await ws.send(cmd)
-                while not self.stop_event.is_set():
-                    msg = await ws.recv()
-                    if fmt == "json":
-                        obj = json.loads(msg)
-                        ts = obj["timestamp"]
-                        values = obj["data"][0]
-                    else:  # csv
-                        parts = msg.split(",")
-                        ts = float(parts[0])
-                        values = list(map(float, parts[1:]))
-                    self.queue.put((ts, values))
+                # ---- optional “server-talks-first” handshake -------------------
+                if self.strategy.server_sends_initial_msg():
+                    first_frame = await ws.recv()                # wait & store
+                    self.strategy.handle_initial_msg(first_frame)  # may ignore
+                # ---- now send the normal subscribe command --------------------
+                await ws.send(subscribe_cmd)
+                try:
+                    while not self.stop_event.is_set():
+                        try:
+                            raw = await asyncio.wait_for(ws.recv(), timeout=0.5)
+                        except asyncio.TimeoutError:
+                            continue            # regelmäßig Stop-Flag prüfen
+                        ts, val_dict = self.strategy.parse_ws_msg(raw)
+                        values = [val_dict.get(uid, float("nan"))
+                                for uid in self.active_uuids]
+                        self.queue.put((ts, values))
+                finally:
+                    await ws.close()  
+
         try:
             asyncio.run(_runner())
         except Exception as e:
@@ -204,27 +226,22 @@ class DevDataClient(tk.Tk):
                 self.stop_event.set()
                 return
             ts, values = item
-            for dev_uuid, val in zip(self.lines.keys(), values):
-                self.data_buffer[dev_uuid].append((ts, val))
-                # only save the last 1000 datapoints 
-                if len(self.data_buffer[dev_uuid]) > 1000:
-                    self.data_buffer[dev_uuid] = self.data_buffer[dev_uuid][-1000:]
-                xs, ys = zip(*self.data_buffer[dev_uuid])
-                self.lines[dev_uuid].set_data(xs, ys)
+            for uid, val in zip(self.active_uuids, values):
+                self.data_buffer[uid].append((ts, val))
+                # keep only last 1000 datapoints
+                if len(self.data_buffer[uid]) > 1000:
+                    self.data_buffer[uid] = self.data_buffer[uid][-1000:]
+                xs, ys = zip(*self.data_buffer[uid])
+                self.lines[uid].set_data(xs, ys)
 
-        # Scale axis 
-        if any(self.data_buffer[dev] for dev in self.data_buffer):
-            all_x = [x for buf in self.data_buffer.values() for x, _ in buf]
-            all_y = [y for buf in self.data_buffer.values() for _, y in buf]
-            self.ax.set_xlim(min(all_x), max(all_x))
-            ymin, ymax = min(all_y), max(all_y)
-            if ymin == ymax:
-                ymax += 1e-3
-            self.ax.set_ylim(ymin, ymax)
+        # scale axis automatically
+        if any(self.data_buffer[uid] for uid in self.active_uuids):
+            self.ax.relim()
+            self.ax.autoscale_view()
         self.canvas.draw_idle()
 
     # --------------------------------------------------------
-    # Clean up when closed 
+    # Clean up when closed
     # --------------------------------------------------------
     def _on_close(self):
         self.stop_event.set()
@@ -232,9 +249,8 @@ class DevDataClient(tk.Tk):
 
 
 # ------------------------------------------------------------
-# start point 
+# start point
 # ------------------------------------------------------------
 if __name__ == "__main__":
-    matplotlib.use("TkAgg")   
-    app = DevDataClient()
-    app.mainloop()
+    matplotlib.use("TkAgg")
+    DevDataClient().mainloop()
