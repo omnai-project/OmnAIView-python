@@ -145,14 +145,14 @@ class DevDataServerStrategy(DataSourceStrategy):
         # ---------- JSON ----------
         if raw.startswith("{"):
             obj = json.loads(raw)
-            ts = obj["timestamp"]
+            ts_UNIX = obj["timestamp"]
             values = obj["data"][0]          # list in *subscription* order
-            return ts, dict(zip(self._uuids, values))
-
-        # ---------- CSV ----------
-        parts = raw.split(",")
-        ts = float(parts[0])
-        values = list(map(float, parts[1:]))
+        else:
+             # ---------- CSV ----------
+            parts = raw.split(",")
+            ts = float(parts[0])
+            values = list(map(float, parts[1:]))
+        ts = int(ts_UNIX * 1000) # transform UNIX timestamps into correct integer values
         return ts, dict(zip(self._uuids, values))
 
 
