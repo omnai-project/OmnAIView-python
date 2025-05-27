@@ -11,6 +11,8 @@ import queue
 import threading
 from functools import partial
 from typing import Dict, List, Tuple
+import os 
+import datetime 
 
 import matplotlib
 import matplotlib.animation as animation
@@ -40,6 +42,10 @@ class DevDataClient(tk.Tk):
         bar.pack(side="top", fill="x")
         ttk.Button(bar, text="Connect to Websocket",
                    command=self._connect_dialog).pack(side="left", padx=4, pady=4)
+        # Record data : Data is saved in RAM until flushed 
+        self.rec_btn = ttk.Button(bar, text="● Record",
+            command=self._toggle_recording, state="disabled")
+        self.rec_btn.pack(side="left", padx=4, pady=4)
 
         # ­­­– Plot-Window –­­­
         self.fig, self.ax = plt.subplots()
@@ -59,6 +65,11 @@ class DevDataClient(tk.Tk):
         self.strategy = None
         self.host_port = ""
         self.active_uuids: List[str] = []
+        
+        # State Management of Toolbar 
+        self.recording   = False
+        self.record_data = []           # List[ List[float] ]
+        self.record_fh   = None
 
         # Animation of the data
         self.ani = animation.FuncAnimation(
@@ -183,6 +194,8 @@ class DevDataClient(tk.Tk):
             ),
             daemon=True)
         self.ws_thread.start()
+        # change toolbar states
+        self.rec_btn.config(state="normal")
 
     # --------------------------------------------------------
     # Background Thread – WebSocket client (asyncio)
@@ -214,6 +227,36 @@ class DevDataClient(tk.Tk):
             asyncio.run(_runner())
         except Exception as e:
             self.queue.put(("__error__", e))
+            
+    # --------------------------------------------------------
+    # Record-Handling (record a measurement)
+    # --------------------------------------------------------       
+    
+    def _toggle_recording(self):
+        if self.recording:
+            self._stop_recording()
+        else:
+            self._start_recording()
+
+    def _start_recording(self):
+        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        # new name for new file via timestamp
+        fname = f"testdatei_{ts}.json"
+        self.record_fh = open(fname, "w", encoding="utf-8")
+        self.record_data.clear()
+        self.recording = True
+        self.rec_btn.config(text="■ Stop")
+        print(f"[Recorder] started: {fname}")
+
+    def _stop_recording(self):
+        if not self.recording:
+            return
+        # dump JSON and close
+        json.dump({"signal": self.record_data}, self.record_fh, indent=2)
+        self.record_fh.close()
+        self.recording = False
+        self.rec_btn.config(text="● Record")
+        print(f"[Recorder] stopped: {self.record_fh.name}")
 
     # --------------------------------------------------------
     # Plot-Update (every 100 ms)
@@ -226,6 +269,9 @@ class DevDataClient(tk.Tk):
                 self.stop_event.set()
                 return
             ts, values = item
+            # Record data until flushed
+            if self.recording:
+                self.record_data.append([ts, *values]) 
             for uid, val in zip(self.active_uuids, values):
                 self.data_buffer[uid].append((ts, val))
                 # keep only last 1000 datapoints
@@ -245,6 +291,9 @@ class DevDataClient(tk.Tk):
     # --------------------------------------------------------
     def _on_close(self):
         self.stop_event.set()
+        # ensure data is flushed when app is closed 
+        if self.recording:                       
+            self._stop_recording()
         self.destroy()
 
 
