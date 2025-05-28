@@ -23,7 +23,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from websockets import connect
 import requests
 
-from datasources import (
+from src.datasources import (
     Device,
     available_sources,
     get_strategy,
