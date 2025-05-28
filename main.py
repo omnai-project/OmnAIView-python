@@ -21,6 +21,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from websockets import connect
+import requests
 
 from datasources import (
     Device,
@@ -46,6 +47,10 @@ class DevDataClient(tk.Tk):
         self.rec_btn = ttk.Button(bar, text="● Record",
             command=self._toggle_recording, state="disabled")
         self.rec_btn.pack(side="left", padx=4, pady=4)
+        # Analyse data : This is currently fixed to one analysis on a specific server 
+        self.analyse_btn = ttk.Button(bar, text="Analysis",       
+           command=self._run_analysis, state="disabled") 
+        self.analyse_btn.pack(side="left", padx=4, pady=4)
 
         # ­­­– Plot-Window –­­­
         self.fig, self.ax = plt.subplots()
@@ -70,6 +75,7 @@ class DevDataClient(tk.Tk):
         self.recording   = False
         self.record_data = []           # List[ List[float] ]
         self.record_fh   = None
+        self.last_record_file = None 
 
         # Animation of the data
         self.ani = animation.FuncAnimation(
@@ -196,6 +202,7 @@ class DevDataClient(tk.Tk):
         self.ws_thread.start()
         # change toolbar states
         self.rec_btn.config(state="normal")
+        self.analyse_btn.config(state="disabled")
 
     # --------------------------------------------------------
     # Background Thread – WebSocket client (asyncio)
@@ -254,9 +261,43 @@ class DevDataClient(tk.Tk):
         # dump JSON and close
         json.dump({"signal": self.record_data}, self.record_fh, indent=2)
         self.record_fh.close()
+        # set name of last file recorded / this is dummy code seriously not a pretty solution for this 
+        self.last_record_file = self.record_fh.name     
+        self.analyse_btn.config(state="normal")
+        # recording state 
         self.recording = False
         self.rec_btn.config(text="● Record")
         print(f"[Recorder] stopped: {self.record_fh.name}")
+    
+    # --------------------------------------------------------
+    # send last recording as pure JSON to /mean and show result
+    # --------------------------------------------------------
+    def _run_analysis(self):
+        if not self.last_record_file or not os.path.exists(self.last_record_file):
+            messagebox.showinfo("Analysis", "No recording available.")
+            return
+
+        # 1) load JSON file
+        try:
+            with open(self.last_record_file, "r", encoding="utf-8") as fh:
+                payload = json.load(fh)         
+        except Exception as exc:
+            messagebox.showerror("Analysis", f"Cannot read file:\n{exc}")
+            return
+
+        # 2) POST as application/json 
+        url = "http://127.0.0.1:8000/mean"
+        try:
+            resp = requests.post(url, json=payload, timeout=10)
+            resp.raise_for_status()
+            mean_val = resp.json().get("mean_value")
+        except Exception as exc:
+            messagebox.showerror("Analysis", f"Request failed:\n{exc}")
+            return
+        
+        messagebox.showinfo("Analysis", f"Mittelwert : {mean_val}")
+
+
 
     # --------------------------------------------------------
     # Plot-Update (every 100 ms)
