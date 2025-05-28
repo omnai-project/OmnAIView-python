@@ -63,6 +63,14 @@ pip install -r requirements.txt
 python .\src\main.py
 ```
 
+### Logging 
+
+If you want to log the values measured run the application with : 
+```sh
+python ./src/main.py --logging
+```
+
+
 ## Workflow 
 Click “Connect to Websocket”
 A dialog pops up. Choose your datasource. Enter the server address in the form ip:port, e.g. localhost:8080, then confirm.

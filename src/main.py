@@ -22,12 +22,21 @@ from tkinter import messagebox, ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from websockets import connect
 import requests
+import argparse
 
-from src.datasources import (
+from datasources import (
     Device,
     available_sources,
     get_strategy,
 )
+
+#------------------------------------------------------------
+# Parse command-line arguments
+#------------------------------------------------------------
+parser = argparse.ArgumentParser()
+parser.add_argument('--logging', action='store_true', help='Enable terminal logging of stream values')
+args = parser.parse_args()
+ENABLE_LOG = args.logging if 'args' in globals() else False
 
 # ------------------------------------------------------------
 # GUI-Class
@@ -226,9 +235,12 @@ class DevDataClient(tk.Tk):
                         ts, val_dict = self.strategy.parse_ws_msg(raw)
                         values = [val_dict.get(uid, float("nan"))
                                 for uid in self.active_uuids]
+                        # Conditional terminal logging
+                        if ENABLE_LOG:
+                            print(f"Timestamp: {ts}, Values: {values}")
                         self.queue.put((ts, values))
                 finally:
-                    await ws.close()  
+                    await ws.close()
 
         try:
             asyncio.run(_runner())
