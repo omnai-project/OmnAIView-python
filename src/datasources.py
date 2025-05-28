@@ -138,18 +138,13 @@ class DevDataServerStrategy(DataSourceStrategy):
 
     # ---------- WS Frame parsing ----------
     def parse_ws_msg(self, raw):
-        # Server always sends UTF-8 text frames
         if isinstance(raw, bytes):
             raw = raw.decode()
-
-        # ---------- JSON ----------
         if raw.startswith("{"):
             obj = json.loads(raw)
             ts = obj["timestamp"]
-            values = obj["data"][0]          # list in *subscription* order
+            values = obj["data"][0]
             return ts, dict(zip(self._uuids, values))
-
-        # ---------- CSV ----------
         parts = raw.split(",")
         ts = float(parts[0])
         values = list(map(float, parts[1:]))
