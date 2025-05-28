@@ -114,7 +114,7 @@ class DevDataServerStrategy(DataSourceStrategy):
 
     # ---------- REST ----------
     def fetch_devices(self, host_port: str) -> List[Device]:
-        url = f"http://{host_port}/UUID"
+        url = f"http://{host_port}/v1/get_devices"
         resp = requests.get(url, timeout=5)
         resp.raise_for_status()
         devices = []
@@ -199,7 +199,7 @@ class OmnAIScopeStrategy(DataSourceStrategy):
 
     # ---------- WS handshake ----------
     def build_ws_uri(self, host_port: str) -> str:
-        return f"ws://{host_port}/ws"
+        return f"ws://{host_port}/v1/subscribe_ws"
 
     def build_subscribe_cmd(self, uuids, rate, fmt):
         self._uuids = uuids
