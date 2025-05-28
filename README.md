@@ -8,51 +8,66 @@ The example shows how to receive data from a [DevDataServer](https://github.com/
 This example is part of the [OmnAIView](https://github.com/AI-Gruppe/OmnAIView) project an OpenSource project for an omnipotent Datavisualization and Dataanalyzing tool and shows an implementation in python instead of Angular. 
 
 ---
-## 1 DevDataServer Setup 
-### 1  Prerequisites for the DevDataServer 
+## DataServers
+This project works with all OmnAI compatible Data-Sources. 
+Two prominent ones being:
+1) [OmnAIView-DevDataServer](https://github.com/AI-Gruppe/OmnAIView-DevDataServer)
+2) [OmnAI-CLI Tool](omnaiscope.auto-intern.de/download)
 
-Packages    
-Install once inside a virtual-env:
-``` bash 
-python -m venv env
-# Linux/macOS
-source env/bin/activate
-# Windows
-env\Scripts\activate
-pip install requests websockets matplotlib
-``` 
-
-### 2  Start the DevDataServer (backend)
-
-``` bash
-git clone https://github.com/AI-Gruppe/OmnAIView-DevDataServer.git
-cd OmnAIView-DevDataServer/example_python
-python main.py
-```
-
-### → “Server running on port 8080 (HTTP & WebSocket)”
+### DevDataServer
+Set up the DevDataServer according to its [own README.md](https://github.com/AI-Gruppe/OmnAIView-DevDataServer/blob/master/README.md)
+ → “Server running on port 8080 (HTTP & WebSocket)”
 Tip: If you run the server on a different host or port, remember the address; you’ll need it in the client.
 
-## 2 OmnAIScope Server Setup 
-### Download the executable from omnaiscope.auto-intern.de/download
-### Run the exe 
+## OmnAI-CLI Tool
+This assumes you have a working OmnAIScope, that you can connect to your computer.
+1) Download the executable from omnaiscope.auto-intern.de/download
+2) Run the exe 
 ``` bash 
 .\MiniOmni.exe -w 
 ```
 
 This starts a websocket on port 8080. 
 
-## Important note: The OmnAIBackend and the DevDataServer run on the same port so you are not able to use both at the same time without adjustments 
+> Important note: The OmnAIBackend and the DevDataServer run on the same port so you are not able to use both at the same time without adjustments 
+### More References for the OmnAI-CLI Tool
+* YouTube: [Using the OmnAIScope on Windows as a signal recorder](https://www.youtube.com/watch?v=0I5KWNq08IA)
+* YouTube: [Raspberry Pi Oscilloscope! Using the AUTO INTERN OmnAIScope as an analog signal recorder](https://www.youtube.com/watch?v=xMsWKSsuCRk)
 
-## 3 Launch the GUI
+## Launch the GUI
+Make sure you have installed *Python3.12* (or newer). If you are running Linux, you additionally need to install `python3-tk`.
+
+### Steps to Run the GUI
+1) Clone the Repo
+2) Navigate into the Base-Dir
+3) Setup Virtual Environment
+4) Install Dependencies
+5) RUN!
+
 ``` bash
-python main.py      # inside the DevDataClient folder
+git clone https://github.com/AI-Gruppe/OmnAIView-python.git
+cd OmnAIView-python
+python3.12 -m venv .venv
+source ./.venv/bin/activate
+pip install -r requirements.txt
+python ./src/main.py
 ```
-## 4 Workflow
+
+If you are running Windows, the commands look a bit different:
+```sh
+git clone https://github.com/AI-Gruppe/OmnAIView-python.git
+cd OmnAIView-python
+python3.12 -m venv .venv
+.\.venv\bin\activate.bat
+pip install -r requirements.txt
+python .\src\main.py
+```
+
+## Workflow 
 Click “Connect to Websocket”
 A dialog pops up. Choose your datasource. Enter the server address in the form ip:port, e.g. localhost:8080, then confirm.
 
-The client fetches the device list via GET /UUID.
+The client fetches the device list via `get_devices`.
 A second dialog appears, listing all available devices as check-boxes.
 
 Select one or more devices, choose a sample rate (Hz) and the data format (json or csv), then press “Start Measurement”.
