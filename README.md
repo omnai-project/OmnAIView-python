@@ -72,6 +72,7 @@ python ./src/main.py --logging
 
 
 ## Workflow 
+### Connect to Websocket 
 Click “Connect to Websocket”
 A dialog pops up. Choose your datasource. Enter the server address in the form ip:port, e.g. localhost:8080, then confirm.
 
@@ -87,6 +88,15 @@ Legend keys = device UUIDs
 Line colours = RGB values sent by the server
 
 The upper toolbar remains visible so you can reconnect after closing the window.
+
+### Recording 
+
+Click record to take a measurment. Important: While recording data is saved in RAM, make sure to not overflow it.
+
+### Analysing 
+To analyze data the DevOmnAI-Analysis Server is used . To start the server follow its (own README)[https://github.com/AI-Gruppe/DevMathAnalysisServerOmnAI?tab=readme-ov-file#project-setup] . 
+
+After recording press the analysis button. You should receive the mean of the recorded waveform in a popup window. 
 
 Close the main window to end the WebSocket session cleanly.
 
