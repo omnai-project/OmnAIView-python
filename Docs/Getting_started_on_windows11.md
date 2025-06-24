@@ -9,11 +9,11 @@ To start DevDataClient on Windows, the first step is to open a terminal.
 You can do this in two ways:
 
 - **Option A:** Use the Windows search bar (see screenshot) and type `cmd`, then press Enter.
-(https://github.com/Defjoint777/OmnAIView-python/blob/master/Docs/screens/screens/WindowsLeiste.png?raw=true)
+![](https://github.com/Defjoint777/OmnAIView-python/blob/master/Docs/screens/screens/WindowsLeiste.png?raw=true)
 
 - **Option B:** Press `Windows + R` on your keyboard. A small window will appear (see screenshot); type `cmd` and press Enter.
 
-(https://github.com/Defjoint777/OmnAIView-python/blob/master/Docs/screens/screens/cmd.png?raw=true)
+![](https://github.com/Defjoint777/OmnAIView-python/blob/master/Docs/screens/screens/cmd.png?raw=true)
 
 Now you should be inside the terminal window.
 
@@ -38,7 +38,7 @@ Now we’re ready to clone the project repository. Run the following command in 
 ```bash
  git clone https://github.com/AI-Gruppe/OmnAIView-python.git
 ```
-(https://github.com/Defjoint777/OmnAIView-python/blob/master/Docs/screens/screens/clone.png?raw=true)
+![](https://github.com/Defjoint777/OmnAIView-python/blob/master/Docs/screens/screens/clone.png?raw=true)
 
 ## 4. Navigate into the Project Directory
 
@@ -63,7 +63,7 @@ To activate the environment, run:
 ```
 If the command line now starts with (.venv) – everything is working correctly.
 
-(https://github.com/Defjoint777/OmnAIView-python/blob/master/Docs/screens/screens/cdvenvstart.png?raw=true)
+![](https://github.com/Defjoint777/OmnAIView-python/blob/master/Docs/screens/screens/cdvenvstart.png?raw=true)
 
 ## 7. Install Project Dependencies
 
@@ -74,7 +74,7 @@ pip install -r requirements.txt
 ```
 This may take a minute or two depending on your internet speed.
 
-(https://github.com/Defjoint777/OmnAIView-python/blob/master/Docs/screens/screens/req.png?raw=true)
+![](https://github.com/Defjoint777/OmnAIView-python/blob/master/Docs/screens/screens/req.png?raw=true)
 
 ## 8. Start the Application
 
@@ -86,7 +86,7 @@ python .\src\main.py
 ```
 A start menu should appear.
 
-(https://github.com/Defjoint777/OmnAIView-python/blob/master/Docs/screens/screens/Start.png?raw=true)
+![](https://github.com/Defjoint777/OmnAIView-python/blob/master/Docs/screens/screens/Start.png?raw=true)
 
 ## 9. Connect to WebSocket
 
@@ -96,11 +96,11 @@ The main interface will open. Click on "Connect to WebSocket" to initiate a conn
 
 A new window will appear where you can enter the IP:PORT of the server you want to connect to.
 
-(https://github.com/Defjoint777/OmnAIView-python/blob/master/Docs/screens/screens/ipport.png?raw=true)
+![](https://github.com/Defjoint777/OmnAIView-python/blob/master/Docs/screens/screens/ipport.png?raw=true)
 
 ## 11. Start Working
 
 Once connected, you can begin sending, receiving, and visualizing data.
 
-(https://github.com/Defjoint777/OmnAIView-python/blob/master/Docs/screens/screens/Graph.png?raw=true)
+![](https://github.com/Defjoint777/OmnAIView-python/blob/master/Docs/screens/screens/Graph.png?raw=true)
 
