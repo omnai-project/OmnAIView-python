@@ -58,7 +58,7 @@ If you are running Windows, the commands look a bit different:
 git clone https://github.com/AI-Gruppe/OmnAIView-python.git
 cd OmnAIView-python
 python3.12 -m venv .venv
-.\.venv\bin\activate.bat
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 python .\src\main.py
 ```
