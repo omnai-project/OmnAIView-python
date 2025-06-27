@@ -12,7 +12,7 @@ This example is part of the [OmnAIView](https://github.com/AI-Gruppe/OmnAIView) 
 This project works with all OmnAI compatible Data-Sources. 
 Two prominent ones being:
 1) [OmnAIView-DevDataServer](https://github.com/AI-Gruppe/OmnAIView-DevDataServer)
-2) [OmnAI-CLI Tool](omnaiscope.auto-intern.de/download)
+2) [OmnAI-CLI Tool](https://omnaiscope.auto-intern.de/download)
 
 ### DevDataServer
 Set up the DevDataServer according to its [own README.md](https://github.com/AI-Gruppe/OmnAIView-DevDataServer/blob/master/README.md)
